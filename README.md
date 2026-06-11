@@ -1,0 +1,2 @@
+Copy-paste the code and save it as .html then double click the file and there you go..a statistical analysis based on real data about major world indices ATHEX and Wall street(plus numerous wall street stock). 
+My specialties don't include market analysis but I am amateur on this field and I like to have an idea about it..so the predictions there mostly are a demo of how to create statistics on an .html and less a real advice of how to invest your money... enjoy!
