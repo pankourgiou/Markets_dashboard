@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MERIDIAN — Global Market Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:       #0a0c10;
+  --surface:  #111520;
+  --surface2: #161c2a;
+  --border:   #1e2535;
+  --gold:     #c9a84c;
+  --gold-dim: #8a6e30;
+  --up:       #3ecf8e;
+  --down:     #f16c6c;
+  --flat:     #7b8db0;
+  --text:     #dde3ef;
+  --muted:    #5a6480;
+  --accent:   #4f7cff;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.6;min-height:100vh;}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .6s;}
+.loading-logo{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:var(--gold);letter-spacing:.15em;margin-bottom:28px;}
+.loading-bar-outer{width:280px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+.loading-bar-inner{height:100%;background:linear-gradient(to right,var(--gold-dim),var(--gold));width:0;animation:load 3s ease forwards;}
+@keyframes load{0%{width:0%}80%{width:88%}100%{width:100%}}
+.loading-status{color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-top:14px;}
+
+/* HEADER */
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 32px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,12,16,.97);backdrop-filter:blur(12px);z-index:100;}
+.logo{font-family:'Playfair Display',serif;font-size:21px;font-weight:900;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;}
+.logo span{color:var(--text);font-weight:400;font-size:10px;letter-spacing:.25em;display:block;margin-top:-3px;}
+.header-right{display:flex;align-items:center;gap:20px;}
+#live-time{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--up);display:inline-block;animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+#update-status{font-size:11px;color:var(--muted);letter-spacing:.06em;}
+
+/* SEARCH BAR */
+.search-bar{padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;}
+.search-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;width:260px;outline:none;transition:border-color .2s;}
+.search-input::placeholder{color:var(--muted);}
+.search-input:focus{border-color:var(--gold-dim);}
+.search-count{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;}
+
+/* TICKER */
+.ticker-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 0;overflow:hidden;white-space:nowrap;}
+.ticker-track{display:inline-flex;gap:0;animation:ticker 300s linear infinite;}
+.ticker-item{padding:0 24px;font-family:'DM Mono',monospace;font-size:11px;border-right:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;}
+.ticker-item .sym{color:var(--gold);font-weight:500;}
+.ticker-item .chg.up{color:var(--up);}
+.ticker-item .chg.dn{color:var(--down);}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* LAYOUT */
+.main{padding:28px 32px;max-width:1700px;margin:0 auto;}
+
+.section-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--gold);letter-spacing:.04em;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--gold-dim),transparent);}
+
+.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:32px;}
+@media(max-width:800px){.stats-row{grid-template-columns:repeat(3,1fr);}}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;text-align:center;}
+.stat-val{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:var(--text);margin-bottom:3px;}
+.stat-label{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+
+/* TABS */
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.tab{padding:8px 18px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* SECTOR LABEL */
+.sector-group{margin-bottom:32px;}
+.sector-label{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.sector-label .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+/* STOCK GRID */
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+
+/* CARD */
+.index-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:15px 16px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden;}
+.index-card:hover{border-color:var(--gold-dim);transform:translateY(-2px);}
+.index-card.selected{border-color:var(--gold);}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.card-sym{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--text);}
+.card-name-small{font-size:10px;color:var(--muted);margin-top:1px;letter-spacing:.04em;}
+.card-badge{font-size:10px;padding:2px 7px;border-radius:3px;letter-spacing:.05em;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;}
+.badge-up{background:rgba(62,207,142,.12);color:var(--up);}
+.badge-dn{background:rgba(241,108,108,.12);color:var(--down);}
+.badge-flat{background:rgba(123,141,176,.12);color:var(--flat);}
+.card-price{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--text);letter-spacing:-.02em;}
+.card-meta{display:flex;justify-content:space-between;margin-top:7px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.sparkline-wrap{height:32px;margin-top:10px;}
+.sparkline-wrap canvas{width:100%!important;}
+.card-bar{position:absolute;bottom:0;left:0;height:2px;background:linear-gradient(to right,var(--gold),transparent);width:0;transition:width .8s ease;}
+.index-card:hover .card-bar{width:100%;}
+.card-sector-tag{position:absolute;top:8px;right:8px;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--bg);padding:1px 5px;border-radius:2px;border:1px solid var(--border);}
+
+/* ANALYSIS PANEL */
+.analysis-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-bottom:36px;}
+@media(max-width:900px){.analysis-grid{grid-template-columns:1fr;}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px;}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+.panel-title span{color:var(--gold);}
+
+/* CHART */
+#main-chart-wrap{position:relative;height:250px;}
+
+/* PRED TABLE */
+.pred-table{width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace;}
+.pred-table th{text-align:left;padding:7px 10px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:'Inter',sans-serif;font-weight:600;}
+.pred-table td{padding:9px 10px;border-bottom:1px solid rgba(30,37,53,.6);vertical-align:middle;}
+.pred-table tr:last-child td{border-bottom:none;}
+.pred-table tr:hover td{background:rgba(255,255,255,.02);}
+.signal{display:inline-flex;align-items:center;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.08em;}
+.signal-buy{background:rgba(62,207,142,.13);color:var(--up);}
+.signal-sell{background:rgba(241,108,108,.13);color:var(--down);}
+.signal-hold{background:rgba(123,141,176,.13);color:var(--flat);}
+.conf-bar-wrap{width:70px;height:3px;background:var(--border);border-radius:2px;display:inline-block;vertical-align:middle;}
+.conf-bar{height:100%;border-radius:2px;background:var(--gold);}
+
+/* HEATMAP */
+.heatmap{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;}
+@media(max-width:700px){.heatmap{grid-template-columns:repeat(4,1fr);}}
+.hm-cell{border-radius:5px;padding:10px 8px;text-align:center;}
+.hm-sym{font-size:10px;font-weight:600;color:#fff;margin-bottom:2px;}
+.hm-pct{font-size:12px;font-weight:700;color:#fff;}
+
+/* SENTIMENT */
+.sentiment-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sent-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.sent-item:last-child{border-bottom:none;}
+.sent-bar-wrap{display:flex;align-items:center;gap:6px;}
+.sent-bar-outer{width:70px;height:4px;background:var(--border);border-radius:3px;overflow:hidden;}
+.sent-bar-inner{height:100%;border-radius:3px;}
+.bullish{background:var(--up);}
+.bearish{background:var(--down);}
+.sent-pct{font-family:'DM Mono',monospace;font-size:10px;min-width:28px;text-align:right;color:var(--muted);}
+
+/* VIX */
+#vix-gauge-wrap{display:flex;justify-content:center;margin-bottom:10px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--gold-dim);border-radius:6px;padding:10px 16px;font-size:11px;color:var(--text);z-index:200;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* FOOTER */
+footer{margin-top:40px;padding:18px 32px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);letter-spacing:.05em;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* NO RESULTS */
+.no-results{padding:40px;text-align:center;color:var(--muted);font-size:13px;letter-spacing:.08em;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="loading-logo">MERIDIAN</div>
+  <div class="loading-bar-outer"><div class="loading-bar-inner"></div></div>
+  <div class="loading-status" id="load-status">Connecting to markets…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="logo">Meridian <span>Global Market Intelligence</span></div>
+  <div class="header-right">
+    <div id="live-time">—</div>
+    <div><span class="pulse-dot"></span><span id="update-status">Live Feed</span></div>
+  </div>
+</header>
+
+<div class="ticker-bar"><div class="ticker-track" id="ticker-track"></div></div>
+
+<div class="search-bar">
+  <input class="search-input" id="search-input" type="text" placeholder="Search ticker or company name…" oninput="filterStocks(this.value)">
+  <span class="search-count" id="search-count"></span>
+</div>
+
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stat-total">—</div><div class="stat-label">Securities</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-up" style="color:var(--up)">—</div><div class="stat-label">Advancing</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-dn" style="color:var(--down)">—</div><div class="stat-label">Declining</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-flat" style="color:var(--flat)">—</div><div class="stat-label">Unchanged</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-vix">—</div><div class="stat-label">VIX Fear Index</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="main-tabs">
+    <div class="tab active" data-tab="indices" onclick="switchTab('indices',this)">Indices</div>
+    <div class="tab" data-tab="bigtech" onclick="switchTab('bigtech',this)">Big Tech</div>
+    <div class="tab" data-tab="banks" onclick="switchTab('banks',this)">Banks &amp; Finance</div>
+    <div class="tab" data-tab="auto" onclick="switchTab('auto',this)">Automotive</div>
+    <div class="tab" data-tab="construction" onclick="switchTab('construction',this)">Construction</div>
+    <div class="tab" data-tab="energy" onclick="switchTab('energy',this)">Energy &amp; Commodities</div>
+    <div class="tab" data-tab="health" onclick="switchTab('health',this)">Healthcare &amp; Pharma</div>
+    <div class="tab" data-tab="consumer" onclick="switchTab('consumer',this)">Consumer &amp; Retail</div>
+    <div class="tab" data-tab="athex" onclick="switchTab('athex',this)">ATHEX Greece</div>
+    <div class="tab" data-tab="all" onclick="switchTab('all',this)">All Securities</div>
+  </div>
+
+  <div id="tab-indices" class="tab-content active"><div class="stock-grid" id="grid-indices"></div></div>
+  <div id="tab-bigtech"  class="tab-content"><div class="stock-grid" id="grid-bigtech"></div></div>
+  <div id="tab-banks"   class="tab-content"><div class="stock-grid" id="grid-banks"></div></div>
+  <div id="tab-auto"    class="tab-content"><div class="stock-grid" id="grid-auto"></div></div>
+  <div id="tab-construction" class="tab-content"><div class="stock-grid" id="grid-construction"></div></div>
+  <div id="tab-energy"  class="tab-content"><div class="stock-grid" id="grid-energy"></div></div>
+  <div id="tab-health"  class="tab-content"><div class="stock-grid" id="grid-health"></div></div>
+  <div id="tab-consumer" class="tab-content"><div class="stock-grid" id="grid-consumer"></div></div>
+  <div id="tab-athex"   class="tab-content"><div class="stock-grid" id="grid-athex"></div></div>
+  <div id="tab-all"     class="tab-content"><div class="stock-grid" id="grid-all"></div></div>
+
+  <!-- ANALYSIS -->
+  <div class="section-title">Statistical Analysis &amp; Forecast</div>
+  <div class="analysis-grid">
+    <div class="panel">
+      <div class="panel-title">52-Week Price Channel &amp; MA20 <span id="chart-label">S&P 500</span></div>
+      <div id="main-chart-wrap"><canvas id="main-chart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Market Sentiment <span id="sent-date"></span></div>
+      <div id="vix-gauge-wrap"><canvas id="vix-gauge" width="200" height="120"></canvas></div>
+      <div class="sentiment-grid" id="sentiment-grid"></div>
+    </div>
+  </div>
+
+  <!-- PREDICTIONS -->
+  <div class="section-title">30-Day Directional Forecast — Top 40 Securities</div>
+  <div class="panel" style="margin-bottom:36px;overflow-x:auto;">
+    <div class="panel-title">Model: Weighted Momentum + Mean Reversion + Volatility Regime</div>
+    <table class="pred-table" id="pred-table">
+      <thead><tr>
+        <th>Ticker</th><th>Name</th><th>Last</th><th>30d Target</th><th>Δ %</th>
+        <th>Signal</th><th>Confidence</th><th>RSI(14)</th><th>Vol Regime</th>
+      </tr></thead>
+      <tbody id="pred-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="section-title">YTD Performance Heatmap</div>
+  <div class="panel" style="margin-bottom:36px;">
+    <div class="panel-title">Year-to-Date % Change — All Securities</div>
+    <div class="heatmap" id="heatmap"></div>
+  </div>
+
+</div>
+
+<footer>
+  <div>Meridian Market Intelligence — Data for informational purposes only</div>
+  <div id="foot-time">—</div>
+  <div>Forecasts are statistical models, not financial advice</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  SECURITIES DATABASE  (indices + 100+ stocks)
+// ═══════════════════════════════════════════════════════
+
+const SECURITIES = [
+  // ── WORLD INDICES ──────────────────────────────────
+  {sym:'^GSPC',  name:'S&P 500',           tab:'indices', base:5308,   ytd:8.4,  sector:'Index'},
+  {sym:'^DJI',   name:'Dow Jones IA',       tab:'indices', base:39127,  ytd:4.2,  sector:'Index'},
+  {sym:'^IXIC',  name:'NASDAQ Composite',   tab:'indices', base:16742,  ytd:12.1, sector:'Index'},
+  {sym:'^RUT',   name:'Russell 2000',       tab:'indices', base:2043,   ytd:-1.8, sector:'Index'},
+  {sym:'^NDX',   name:'NASDAQ 100',         tab:'indices', base:18573,  ytd:13.5, sector:'Index'},
+  {sym:'^SOX',   name:'PHLX Semiconductor', tab:'indices', base:4812,   ytd:18.2, sector:'Index'},
+  {sym:'GD.AT',  name:'ATHEX Composite',    tab:'indices', base:1438,   ytd:6.9,  sector:'Index'},
+  {sym:'^STOXX50E',name:'EURO STOXX 50',    tab:'indices', base:5012,   ytd:5.3,  sector:'Index'},
+  {sym:'^FTSE',  name:'FTSE 100',           tab:'indices', base:8312,   ytd:3.1,  sector:'Index'},
+  {sym:'^GDAXI', name:'DAX 40',             tab:'indices', base:18204,  ytd:9.7,  sector:'Index'},
+  {sym:'^FCHI',  name:'CAC 40',             tab:'indices', base:7993,   ytd:2.8,  sector:'Index'},
+  {sym:'^N225',  name:'Nikkei 225',         tab:'indices', base:38647,  ytd:-4.2, sector:'Index'},
+  {sym:'^HSI',   name:'Hang Seng',          tab:'indices', base:18321,  ytd:9.1,  sector:'Index'},
+  {sym:'^BSESN', name:'BSE SENSEX',         tab:'indices', base:74110,  ytd:3.2,  sector:'Index'},
+  {sym:'^VIX',   name:'CBOE Volatility',    tab:'indices', base:18.4,   ytd:12.0, sector:'Index'},
+  // ── BIG TECH ──────────────────────────────────────
+  {sym:'AAPL',   name:'Apple Inc.',          tab:'bigtech', base:189.5,  ytd:14.2, sector:'Tech'},
+  {sym:'MSFT',   name:'Microsoft Corp.',     tab:'bigtech', base:415.2,  ytd:11.8, sector:'Tech'},
+  {sym:'GOOGL',  name:'Alphabet (Google)',   tab:'bigtech', base:174.8,  ytd:16.3, sector:'Tech'},
+  {sym:'AMZN',   name:'Amazon.com',          tab:'bigtech', base:192.4,  ytd:22.1, sector:'Tech'},
+  {sym:'META',   name:'Meta Platforms',      tab:'bigtech', base:512.6,  ytd:38.4, sector:'Tech'},
+  {sym:'NVDA',   name:'NVIDIA Corp.',        tab:'bigtech', base:875.4,  ytd:82.1, sector:'Tech'},
+  {sym:'TSLA',   name:'Tesla Inc.',          tab:'bigtech', base:177.3,  ytd:-28.4,sector:'Tech'},
+  {sym:'AVGO',   name:'Broadcom Inc.',       tab:'bigtech', base:168.4,  ytd:24.8, sector:'Tech'},
+  {sym:'ORCL',   name:'Oracle Corp.',        tab:'bigtech', base:132.6,  ytd:18.3, sector:'Tech'},
+  {sym:'ADBE',   name:'Adobe Inc.',          tab:'bigtech', base:456.2,  ytd:-8.4, sector:'Tech'},
+  {sym:'CRM',    name:'Salesforce',          tab:'bigtech', base:281.4,  ytd:6.7,  sector:'Tech'},
+  {sym:'AMD',    name:'Advanced Micro Dev.', tab:'bigtech', base:162.8,  ytd:-12.3,sector:'Tech'},
+  {sym:'INTC',   name:'Intel Corp.',         tab:'bigtech', base:31.4,   ytd:-38.1,sector:'Tech'},
+  {sym:'QCOM',   name:'Qualcomm',            tab:'bigtech', base:184.2,  ytd:8.9,  sector:'Tech'},
+  {sym:'NFLX',   name:'Netflix Inc.',        tab:'bigtech', base:645.3,  ytd:41.2, sector:'Tech'},
+  {sym:'NOW',    name:'ServiceNow',          tab:'bigtech', base:812.4,  ytd:18.7, sector:'Tech'},
+  {sym:'UBER',   name:'Uber Technologies',   tab:'bigtech', base:78.4,   ytd:24.3, sector:'Tech'},
+  {sym:'SPOT',   name:'Spotify Technology',  tab:'bigtech', base:318.2,  ytd:62.1, sector:'Tech'},
+  {sym:'PLTR',   name:'Palantir Technologies',tab:'bigtech',base:22.8,  ytd:48.3, sector:'Tech'},
+  {sym:'SNOW',   name:'Snowflake Inc.',       tab:'bigtech', base:162.4,  ytd:-18.4,sector:'Tech'},
+  {sym:'APP',    name:'Applovin Corp.',       tab:'bigtech', base:74.2,   ytd:112.0,sector:'Tech'},
+  // ── BANKS & FINANCE ───────────────────────────────
+  {sym:'JPM',    name:'JPMorgan Chase',       tab:'banks', base:201.4,  ytd:18.2, sector:'Finance'},
+  {sym:'BAC',    name:'Bank of America',      tab:'banks', base:37.2,   ytd:12.4, sector:'Finance'},
+  {sym:'GS',     name:'Goldman Sachs',        tab:'banks', base:478.6,  ytd:24.1, sector:'Finance'},
+  {sym:'MS',     name:'Morgan Stanley',       tab:'banks', base:94.8,   ytd:14.8, sector:'Finance'},
+  {sym:'WFC',    name:'Wells Fargo',          tab:'banks', base:58.4,   ytd:22.3, sector:'Finance'},
+  {sym:'C',      name:'Citigroup',            tab:'banks', base:62.8,   ytd:24.8, sector:'Finance'},
+  {sym:'BRK-B',  name:'Berkshire Hathaway',   tab:'banks', base:412.4,  ytd:14.1, sector:'Finance'},
+  {sym:'AXP',    name:'American Express',     tab:'banks', base:234.6,  ytd:28.4, sector:'Finance'},
+  {sym:'BLK',    name:'BlackRock',            tab:'banks', base:880.4,  ytd:16.2, sector:'Finance'},
+  {sym:'SCHW',   name:'Charles Schwab',       tab:'banks', base:68.4,   ytd:-8.4, sector:'Finance'},
+  {sym:'USB',    name:'U.S. Bancorp',         tab:'banks', base:44.2,   ytd:4.8,  sector:'Finance'},
+  {sym:'V',      name:'Visa Inc.',            tab:'banks', base:278.4,  ytd:9.3,  sector:'Finance'},
+  {sym:'MA',     name:'Mastercard',           tab:'banks', base:488.2,  ytd:8.4,  sector:'Finance'},
+  {sym:'PYPL',   name:'PayPal Holdings',      tab:'banks', base:62.4,   ytd:-4.2, sector:'Finance'},
+  {sym:'COF',    name:'Capital One',          tab:'banks', base:148.2,  ytd:18.8, sector:'Finance'},
+  {sym:'PNC',    name:'PNC Financial',        tab:'banks', base:162.4,  ytd:8.2,  sector:'Finance'},
+  // ── AUTOMOTIVE ────────────────────────────────────
+  {sym:'F',      name:'Ford Motor Co.',       tab:'auto', base:12.4,   ytd:-14.2,sector:'Auto'},
+  {sym:'GM',     name:'General Motors',       tab:'auto', base:48.2,   ytd:18.4, sector:'Auto'},
+  {sym:'TM',     name:'Toyota Motor',         tab:'auto', base:198.4,  ytd:-8.2, sector:'Auto'},
+  {sym:'STLA',   name:'Stellantis N.V.',      tab:'auto', base:18.4,   ytd:-32.4,sector:'Auto'},
+  {sym:'HMC',    name:'Honda Motor',          tab:'auto', base:32.4,   ytd:-4.8, sector:'Auto'},
+  {sym:'VOW3.DE',name:'Volkswagen AG',        tab:'auto', base:114.2,  ytd:-18.4,sector:'Auto'},
+  {sym:'BMW.DE', name:'BMW AG',               tab:'auto', base:92.4,   ytd:-12.8,sector:'Auto'},
+  {sym:'MBG.DE', name:'Mercedes-Benz',        tab:'auto', base:58.2,   ytd:-22.4,sector:'Auto'},
+  {sym:'RIVN',   name:'Rivian Automotive',    tab:'auto', base:11.2,   ytd:-42.8,sector:'Auto'},
+  {sym:'NIO',    name:'NIO Inc.',             tab:'auto', base:5.8,    ytd:-48.4,sector:'Auto'},
+  {sym:'LI',     name:'Li Auto Inc.',         tab:'auto', base:22.4,   ytd:-28.4,sector:'Auto'},
+  {sym:'RACE',   name:'Ferrari N.V.',         tab:'auto', base:382.6,  ytd:22.4, sector:'Auto'},
+  {sym:'LCID',   name:'Lucid Group',          tab:'auto', base:2.84,   ytd:-38.2,sector:'Auto'},
+  // ── CONSTRUCTION ──────────────────────────────────
+  {sym:'CAT',    name:'Caterpillar Inc.',      tab:'construction', base:352.4, ytd:12.8, sector:'Construction'},
+  {sym:'DE',     name:'John Deere',            tab:'construction', base:382.4, ytd:-8.2, sector:'Construction'},
+  {sym:'VMC',    name:'Vulcan Materials',      tab:'construction', base:248.4, ytd:8.4,  sector:'Construction'},
+  {sym:'MLM',    name:'Martin Marietta',       tab:'construction', base:582.4, ytd:12.2, sector:'Construction'},
+  {sym:'URI',    name:'United Rentals',        tab:'construction', base:748.2, ytd:18.4, sector:'Construction'},
+  {sym:'PWR',    name:'Quanta Services',       tab:'construction', base:248.2, ytd:22.8, sector:'Construction'},
+  {sym:'FLR',    name:'Fluor Corporation',     tab:'construction', base:42.8,  ytd:28.4, sector:'Construction'},
+  {sym:'EMR',    name:'Emerson Electric',      tab:'construction', base:112.4, ytd:8.2,  sector:'Construction'},
+  {sym:'HON',    name:'Honeywell Intl.',       tab:'construction', base:194.8, ytd:-4.2, sector:'Construction'},
+  {sym:'GE',     name:'GE Vernova',            tab:'construction', base:182.4, ytd:48.2, sector:'Construction'},
+  {sym:'ITT',    name:'ITT Inc.',              tab:'construction', base:124.6, ytd:14.8, sector:'Construction'},
+  {sym:'JCI',    name:'Johnson Controls',      tab:'construction', base:64.8,  ytd:8.4,  sector:'Construction'},
+  {sym:'STLD',   name:'Steel Dynamics',        tab:'construction', base:118.4, ytd:-4.8, sector:'Construction'},
+  {sym:'NUE',    name:'Nucor Corporation',     tab:'construction', base:164.2, ytd:-8.2, sector:'Construction'},
+  {sym:'X',      name:'U.S. Steel Corp.',      tab:'construction', base:38.2,  ytd:-18.4,sector:'Construction'},
+  // ── ENERGY ────────────────────────────────────────
+  {sym:'XOM',    name:'ExxonMobil',            tab:'energy', base:118.4, ytd:14.2, sector:'Energy'},
+  {sym:'CVX',    name:'Chevron Corp.',         tab:'energy', base:154.8, ytd:2.4,  sector:'Energy'},
+  {sym:'COP',    name:'ConocoPhillips',        tab:'energy', base:114.6, ytd:-4.8, sector:'Energy'},
+  {sym:'SLB',    name:'SLB (Schlumberger)',    tab:'energy', base:44.8,  ytd:-14.2,sector:'Energy'},
+  {sym:'OXY',    name:'Occidental Petroleum',  tab:'energy', base:58.4,  ytd:-8.4, sector:'Energy'},
+  {sym:'NEE',    name:'NextEra Energy',        tab:'energy', base:72.4,  ytd:8.2,  sector:'Energy'},
+  {sym:'DUK',    name:'Duke Energy',           tab:'energy', base:104.8, ytd:12.4, sector:'Energy'},
+  {sym:'BP',     name:'BP p.l.c.',             tab:'energy', base:34.2,  ytd:-8.8, sector:'Energy'},
+  {sym:'SHEL',   name:'Shell plc',             tab:'energy', base:68.4,  ytd:4.2,  sector:'Energy'},
+  {sym:'TTE',    name:'TotalEnergies',         tab:'energy', base:62.8,  ytd:-2.4, sector:'Energy'},
+  // ── HEALTHCARE ────────────────────────────────────
+  {sym:'JNJ',    name:'Johnson & Johnson',     tab:'health', base:148.4, ytd:-4.2, sector:'Health'},
+  {sym:'UNH',    name:'UnitedHealth Group',    tab:'health', base:482.6, ytd:-22.4,sector:'Health'},
+  {sym:'LLY',    name:'Eli Lilly & Co.',       tab:'health', base:744.8, ytd:14.8, sector:'Health'},
+  {sym:'PFE',    name:'Pfizer Inc.',           tab:'health', base:27.2,  ytd:-8.4, sector:'Health'},
+  {sym:'ABBV',   name:'AbbVie Inc.',           tab:'health', base:178.4, ytd:18.2, sector:'Health'},
+  {sym:'MRK',    name:'Merck & Co.',           tab:'health', base:128.4, ytd:-4.8, sector:'Health'},
+  {sym:'BMY',    name:'Bristol-Myers Squibb',  tab:'health', base:48.2,  ytd:-12.4,sector:'Health'},
+  {sym:'AMGN',   name:'Amgen Inc.',            tab:'health', base:298.4, ytd:8.2,  sector:'Health'},
+  {sym:'GILD',   name:'Gilead Sciences',       tab:'health', base:72.8,  ytd:24.8, sector:'Health'},
+  {sym:'ISRG',   name:'Intuitive Surgical',    tab:'health', base:398.4, ytd:14.2, sector:'Health'},
+  // ── CONSUMER & RETAIL ─────────────────────────────
+  {sym:'WMT',    name:'Walmart Inc.',          tab:'consumer', base:68.4,  ytd:28.4, sector:'Consumer'},
+  {sym:'COST',   name:'Costco Wholesale',      tab:'consumer', base:848.2, ytd:22.8, sector:'Consumer'},
+  {sym:'HD',     name:"Home Depot",            tab:'consumer', base:348.4, ytd:2.4,  sector:'Consumer'},
+  {sym:'MCD',    name:"McDonald's Corp.",      tab:'consumer', base:282.4, ytd:-4.8, sector:'Consumer'},
+  {sym:'SBUX',   name:'Starbucks Corp.',       tab:'consumer', base:82.4,  ytd:-8.4, sector:'Consumer'},
+  {sym:'NKE',    name:'Nike Inc.',             tab:'consumer', base:72.4,  ytd:-22.4,sector:'Consumer'},
+  {sym:'PG',     name:'Procter & Gamble',      tab:'consumer', base:162.8, ytd:4.2,  sector:'Consumer'},
+  {sym:'KO',     name:'Coca-Cola Co.',         tab:'consumer', base:62.4,  ytd:8.4,  sector:'Consumer'},
+  {sym:'PEP',    name:'PepsiCo Inc.',          tab:'consumer', base:164.2, ytd:-4.8, sector:'Consumer'},
+  {sym:'LVMH.PA',name:'LVMH Moët Hennessy',   tab:'consumer', base:742.8, ytd:-12.4,sector:'Consumer'},
+  {sym:'TGT',    name:'Target Corp.',          tab:'consumer', base:148.4, ytd:-18.8,sector:'Consumer'},
+  {sym:'LOW',    name:"Lowe's Companies",      tab:'consumer', base:228.4, ytd:4.8,  sector:'Consumer'},
+  // ── ATHEX GREEK STOCKS ────────────────────────────
+  {sym:'ALPHA.AT',name:'Alpha Bank',           tab:'athex', base:1.84,  ytd:18.2, sector:'ATHEX'},
+  {sym:'EUROBANK.AT',name:'Eurobank Ergasias', tab:'athex', base:2.14,  ytd:24.8, sector:'ATHEX'},
+  {sym:'ETE.AT', name:'National Bank of Greece',tab:'athex',base:8.42,  ytd:28.4, sector:'ATHEX'},
+  {sym:'PEIRBANK.AT',name:'Piraeus Bank',      tab:'athex', base:4.12,  ytd:22.1, sector:'ATHEX'},
+  {sym:'OTE.AT', name:'OTE Group Telecom',     tab:'athex', base:18.42, ytd:12.4, sector:'ATHEX'},
+  {sym:'OPAP.AT',name:'OPAP S.A.',             tab:'athex', base:17.84, ytd:8.2,  sector:'ATHEX'},
+  {sym:'HELLENiQ.AT',name:'HELLENiQ Energy',  tab:'athex', base:7.68,  ytd:14.8, sector:'ATHEX'},
+  {sym:'MOTOR.AT',name:'Motor Oil Hellas',     tab:'athex', base:24.12, ytd:6.4,  sector:'ATHEX'},
+  {sym:'MYTIL.AT',name:'Mytilineos Holdings',  tab:'athex', base:38.84, ytd:22.8, sector:'ATHEX'},
+  {sym:'ADMIE.AT',name:'ADMIE Holding',        tab:'athex', base:2.82,  ytd:4.8,  sector:'ATHEX'},
+  {sym:'ELPE.AT', name:'Hellenic Petroleum',   tab:'athex', base:8.14,  ytd:8.4,  sector:'ATHEX'},
+  {sym:'TITC.AT', name:'Titan Cement Intl.',   tab:'athex', base:28.42, ytd:12.2, sector:'ATHEX'},
+  {sym:'GRIVALIA.AT',name:'Grivalia Hospitality',tab:'athex',base:4.42, ytd:18.4, sector:'ATHEX'},
+  {sym:'INKAT.AT',name:'Intracom Holdings',    tab:'athex', base:1.68,  ytd:8.8,  sector:'ATHEX'},
+  {sym:'LAMDA.AT',name:'Lamda Development',    tab:'athex', base:8.28,  ytd:14.8, sector:'ATHEX'},
+  {sym:'ELLAKTOR.AT',name:'ELLAKTOR S.A.',     tab:'athex', base:1.48,  ytd:22.4, sector:'ATHEX'},
+  {sym:'FF.AT',  name:'Fourlis Holdings',      tab:'athex', base:6.48,  ytd:8.4,  sector:'ATHEX'},
+  {sym:'GEKTERNA.AT',name:'GEK TERNA Group',   tab:'athex', base:18.62, ytd:28.4, sector:'ATHEX'},
+];
+
+const SENTIMENT = [
+  {label:'Institutional Longs', bull:67, bear:33},
+  {label:'Retail Sentiment',    bull:54, bear:46},
+  {label:'Options Put/Call',    bull:58, bear:42},
+  {label:'Short Interest',      bull:44, bear:56},
+  {label:'Macro Outlook',       bull:61, bear:39},
+  {label:'Earnings Revisions',  bull:72, bear:28},
+];
+
+// ═══════════════════════════════════════════════════════
+//  SIMULATION ENGINE
+// ═══════════════════════════════════════════════════════
+
+function simulate(base, days, sigma=0.013, drift=0.0002) {
+  const p=[base];
+  for(let i=1;i<days;i++){
+    const r=drift+sigma*(Math.random()*2-1)*1.6;
+    p.push(+(p[p.length-1]*(1+r)).toFixed(4));
+  }
+  return p;
+}
+
+function computeRSI(prices,period=14){
+  if(prices.length<period+1)return 50;
+  let g=0,l=0;
+  for(let i=prices.length-period;i<prices.length;i++){
+    const d=prices[i]-prices[i-1];
+    if(d>0)g+=d;else l-=d;
+  }
+  const rs=g/(l||1);
+  return +(100-100/(1+rs)).toFixed(1);
+}
+
+function stdDev(arr){
+  const mean=arr.reduce((a,b)=>a+b,0)/arr.length;
+  return Math.sqrt(arr.map(v=>(v-mean)**2).reduce((a,b)=>a+b,0)/arr.length);
+}
+
+function forecastSignal(prices,rsi){
+  const last=prices[prices.length-1];
+  const ma20=prices.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const ma50=prices.slice(-50).reduce((a,b)=>a+b,0)/50;
+  const vol=stdDev(prices.slice(-20));
+  const regime=vol/last<0.008?'Low':vol/last<0.016?'Normal':'High';
+  let score=0;
+  if(last>ma20)score++;
+  if(ma20>ma50)score++;
+  if(rsi>55)score++;else if(rsi<45)score--;
+  if(last>ma50)score++;
+  const sig=score>=3?'BUY':score<=0?'SELL':'HOLD';
+  const conf=Math.min(94,44+score*13+Math.random()*6)|0;
+  const target=+(last*(1+(score-1.5)*0.019)).toFixed(4);
+  return{sig,conf,target,regime};
+}
+
+function fmt(n){
+  if(n===undefined||n===null)return'—';
+  if(Math.abs(n)<10) return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:3});
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+
+const allData={};
+const allPrices={};
+const sparkCharts={};
+let mainChart=null;
+let currentTab='indices';
+
+// Pre-compute all data
+SECURITIES.forEach(s=>{
+  const prices=simulate(s.base,252);
+  allPrices[s.sym]=prices;
+  const last=prices[prices.length-1];
+  const prev=prices[prices.length-2];
+  const chg=last-prev;
+  const pct=chg/prev*100;
+  const dir=pct>=0.05?'up':pct<=-0.05?'dn':'flat';
+  const color=dir==='up'?'#3ecf8e':dir==='dn'?'#f16c6c':'#7b8db0';
+  allData[s.sym]={prices,last,chg,pct,dir,color,sec:s};
+});
+
+// ═══════════════════════════════════════════════════════
+//  CARD FACTORY
+// ═══════════════════════════════════════════════════════
+
+function makeCard(s){
+  const d=allData[s.sym];
+  const id='spark-'+s.sym.replace(/[^a-zA-Z0-9]/g,'_');
+  const card=document.createElement('div');
+  card.className='index-card';
+  card.dataset.sym=s.sym;
+  const flag=s.tab==='athex'?'🇬🇷':s.sector==='Index'&&s.sym.includes('.AT')?'🇬🇷':
+    ['VOW3.DE','BMW.DE','MBG.DE'].includes(s.sym)?'🇩🇪':
+    ['TM','HMC'].includes(s.sym)?'🇯🇵':
+    s.sym.endsWith('.PA')?'🇫🇷':
+    s.sym.endsWith('.DE')?'🇩🇪':'🇺🇸';
+
+  card.innerHTML=`
+    <div class="card-bar"></div>
+    <div class="card-sector-tag">${s.sector}</div>
+    <div class="card-top" style="padding-right:48px">
+      <div>
+        <div class="eyebrow">${flag} ${s.name.length>22?s.name.slice(0,22)+'…':s.name}</div>
+        <div class="card-sym">${s.sym}</div>
+      </div>
+      <div class="card-badge badge-${d.dir}">${d.pct>=0?'+':''}${d.pct.toFixed(2)}%</div>
+    </div>
+    <div class="card-price" id="price-${id}">${fmt(d.last)}</div>
+    <div class="card-meta">
+      <span>Δ ${d.chg>=0?'+':''}${fmt(d.chg)}</span>
+      <span>YTD ${s.ytd>=0?'+':''}${s.ytd}%</span>
+    </div>
+    <div class="sparkline-wrap"><canvas id="${id}" height="32"></canvas></div>
+  `;
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.index-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    drawMainChart(d.prices,s.name);
+    document.getElementById('chart-label').textContent=s.sym;
+    showToast(`📈 ${s.name}`);
+  });
+  return{card,id};
+}
+
+// ═══════════════════════════════════════════════════════
+//  GRID BUILDER
+// ═══════════════════════════════════════════════════════
+
+function buildGrid(tabId, filter=''){
+  const lo=filter.toLowerCase();
+  const list=SECURITIES.filter(s=>{
+    const matchTab=tabId==='all'||s.tab===tabId;
+    const matchSearch=!lo||s.sym.toLowerCase().includes(lo)||s.name.toLowerCase().includes(lo)||s.sector.toLowerCase().includes(lo);
+    return matchTab&&matchSearch;
+  });
+
+  const gridEl=document.getElementById('grid-'+tabId);
+  gridEl.innerHTML='';
+
+  if(!list.length){
+    gridEl.innerHTML='<div class="no-results">No securities match your search.</div>';
+    return 0;
+  }
+
+  list.forEach(s=>{
+    const{card,id}=makeCard(s);
+    gridEl.appendChild(card);
+    setTimeout(()=>{
+      drawSparkline(id,allData[s.sym].prices.slice(-30),allData[s.sym].color);
+    },80);
+  });
+  return list.length;
+}
+
+// ═══════════════════════════════════════════════════════
+//  SPARKLINES
+// ═══════════════════════════════════════════════════════
+
+function drawSparkline(id,prices,color){
+  const canvas=document.getElementById(id);
+  if(!canvas)return;
+  if(sparkCharts[id])sparkCharts[id].destroy();
+  sparkCharts[id]=new Chart(canvas,{
+    type:'line',
+    data:{labels:prices.map((_,i)=>i),datasets:[{data:prices,borderColor:color,borderWidth:1.5,pointRadius:0,tension:.35,fill:false}]},
+    options:{animation:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}},responsive:true,maintainAspectRatio:false}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN CHART
+// ═══════════════════════════════════════════════════════
+
+function drawMainChart(prices,label){
+  const ctx=document.getElementById('main-chart').getContext('2d');
+  const labels=Array.from({length:prices.length},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-prices.length+i);
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  });
+  const ma20=prices.map((_,i)=>i>=19?+(prices.slice(i-19,i+1).reduce((a,b)=>a+b,0)/20).toFixed(4):null);
+  if(mainChart)mainChart.destroy();
+  mainChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label,data:prices,borderColor:'#c9a84c',borderWidth:2,pointRadius:0,tension:.3,fill:true,
+        backgroundColor:(c)=>{const g=c.chart.ctx.createLinearGradient(0,0,0,250);g.addColorStop(0,'rgba(201,168,76,.18)');g.addColorStop(1,'rgba(201,168,76,0)');return g;}},
+      {label:'MA20',data:ma20,borderColor:'#4f7cff',borderWidth:1.5,borderDash:[4,4],pointRadius:0,tension:.3,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#7b8db0',font:{family:'DM Mono',size:11},boxWidth:12}},
+        tooltip:{backgroundColor:'#111520',borderColor:'#1e2535',borderWidth:1,titleColor:'#c9a84c',bodyColor:'#dde3ef',bodyFont:{family:'DM Mono',size:11}}
+      },
+      scales:{
+        x:{ticks:{color:'#5a6480',font:{family:'DM Mono',size:10},maxTicksLimit:8},grid:{color:'rgba(30,37,53,.6)'}},
+        y:{ticks:{color:'#5a6480',font:{family:'DM Mono',size:10},callback:v=>v.toLocaleString()},grid:{color:'rgba(30,37,53,.6)'}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIX GAUGE
+// ═══════════════════════════════════════════════════════
+
+function drawVixGauge(vix){
+  const canvas=document.getElementById('vix-gauge');
+  const ctx=canvas.getContext('2d');
+  canvas.width=200;canvas.height=120;
+  ctx.clearRect(0,0,200,120);
+  const cx=100,cy=105,r=78;
+  const toRad=deg=>(deg-180)*Math.PI/180;
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,2*Math.PI,false);ctx.strokeStyle='#1e2535';ctx.lineWidth=14;ctx.stroke();
+  [{from:0,to:.33,color:'#3ecf8e'},{from:.33,to:.66,color:'#c9a84c'},{from:.66,to:1,color:'#f16c6c'}].forEach(z=>{
+    ctx.beginPath();ctx.arc(cx,cy,r,toRad(180+z.from*180),toRad(180+z.to*180),false);ctx.strokeStyle=z.color;ctx.lineWidth=14;ctx.stroke();
+  });
+  const norm=Math.min(vix/60,1);
+  const angle=Math.PI+norm*Math.PI;
+  const nx=cx+(r-14)*Math.cos(angle),ny=cy+(r-14)*Math.sin(angle);
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(nx,ny);ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,5,0,2*Math.PI);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#dde3ef';ctx.font='700 19px DM Mono,monospace';ctx.textAlign='center';ctx.fillText(vix.toFixed(1),cx,cy-22);
+  ctx.fillStyle='#5a6480';ctx.font='500 9px Inter,sans-serif';ctx.fillText('VIX',cx,cy-8);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PREDICTION TABLE
+// ═══════════════════════════════════════════════════════
+
+function buildPredTable(){
+  const tbody=document.getElementById('pred-tbody');
+  tbody.innerHTML='';
+  const TOP=SECURITIES.filter(s=>s.sector!=='Index').slice(0,40);
+  TOP.forEach(s=>{
+    const d=allData[s.sym];if(!d)return;
+    const rsi=computeRSI(d.prices);
+    const{sig,conf,target,regime}=forecastSignal(d.prices,rsi);
+    const delta=target-d.last;
+    const deltaPct=delta/d.last*100;
+    const sigClass=sig==='BUY'?'signal-buy':sig==='SELL'?'signal-sell':'signal-hold';
+    const regColor=regime==='Low'?'var(--up)':regime==='Normal'?'var(--gold)':'var(--down)';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="color:var(--gold);font-weight:600">${s.sym}</td>
+      <td style="color:var(--text)">${s.name.length>24?s.name.slice(0,24)+'…':s.name}</td>
+      <td>${fmt(d.last)}</td>
+      <td style="color:var(--gold)">${fmt(target)}</td>
+      <td style="color:${deltaPct>=0?'var(--up)':'var(--down)'}">${deltaPct>=0?'+':''}${deltaPct.toFixed(2)}%</td>
+      <td><span class="signal ${sigClass}">${sig}</span></td>
+      <td><div style="display:flex;align-items:center;gap:5px"><div class="conf-bar-wrap"><div class="conf-bar" style="width:${conf}%"></div></div><span style="color:var(--muted);font-size:9px">${conf}%</span></div></td>
+      <td style="color:${rsi>70?'var(--down)':rsi<30?'var(--up)':'var(--text)'}">${rsi}</td>
+      <td style="color:${regColor};font-size:10px">${regime}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  HEATMAP
+// ═══════════════════════════════════════════════════════
+
+function buildHeatmap(){
+  const hm=document.getElementById('heatmap');
+  hm.innerHTML='';
+  SECURITIES.forEach(s=>{
+    const v=s.ytd;
+    const intensity=Math.min(Math.abs(v)/40,1);
+    const bg=v>=0?`rgba(62,207,142,${.15+intensity*.6})`:`rgba(241,108,108,${.15+intensity*.6})`;
+    const cell=document.createElement('div');
+    cell.className='hm-cell';
+    cell.style.background=bg;
+    const label=s.sym.replace('^','').replace('.AT','').replace('.DE','').replace('.PA','');
+    cell.innerHTML=`<div class="hm-sym">${label.length>7?label.slice(0,7):label}</div><div class="hm-pct">${v>=0?'+':''}${v}%</div>`;
+    cell.title=s.name;
+    hm.appendChild(cell);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SENTIMENT
+// ═══════════════════════════════════════════════════════
+
+function buildSentiment(){
+  const grid=document.getElementById('sentiment-grid');
+  grid.innerHTML='';
+  SENTIMENT.forEach(s=>{
+    const isBull=s.bull>=50;
+    grid.innerHTML+=`<div class="sent-item">
+      <div style="color:var(--text);font-size:11px">${s.label}</div>
+      <div class="sent-bar-wrap">
+        <div class="sent-bar-outer"><div class="sent-bar-inner ${isBull?'bullish':'bearish'}" style="width:${isBull?s.bull:s.bear}%"></div></div>
+        <span class="sent-pct" style="color:${isBull?'var(--up)':'var(--down)'}">${isBull?s.bull:s.bear}%</span>
+      </div>
+    </div>`;
+  });
+  document.getElementById('sent-date').textContent=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATS BAR
+// ═══════════════════════════════════════════════════════
+
+function buildStats(){
+  const upC=Object.values(allData).filter(d=>d.dir==='up').length;
+  const dnC=Object.values(allData).filter(d=>d.dir==='dn').length;
+  const flC=Object.values(allData).filter(d=>d.dir==='flat').length;
+  const vix=14+Math.random()*12;
+  document.getElementById('stat-total').textContent=SECURITIES.length;
+  document.getElementById('stat-up').textContent=upC;
+  document.getElementById('stat-dn').textContent=dnC;
+  document.getElementById('stat-flat').textContent=flC;
+  document.getElementById('stat-vix').textContent=vix.toFixed(1);
+  drawVixGauge(vix);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TICKER
+// ═══════════════════════════════════════════════════════
+
+function buildTicker(){
+  const track=document.getElementById('ticker-track');
+  const items=SECURITIES.map(s=>{
+    const d=allData[s.sym];if(!d)return'';
+    const dir=d.pct>=0?'up':'dn';
+    const label=s.sym.replace('^','').replace(/\.(AT|DE|PA)$/,'');
+    return `<span class="ticker-item"><span class="sym">${label}</span>${fmt(d.last)}<span class="chg ${dir}">${d.pct>=0?'+':''}${d.pct.toFixed(2)}%</span></span>`;
+  }).join('');
+  track.innerHTML=items+items;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+
+function switchTab(tabId,el){
+  currentTab=tabId;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('tab-'+tabId).classList.add('active');
+  const q=document.getElementById('search-input').value;
+  const count=buildGrid(tabId,q);
+  document.getElementById('search-count').textContent=q?`${count} result${count!==1?'s':''}`:'';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════
+
+function filterStocks(q){
+  const tabs=['indices','bigtech','banks','auto','construction','energy','health','consumer','athex','all'];
+  let total=0;
+  tabs.forEach(t=>total+=buildGrid(t,q));
+  document.getElementById('search-count').textContent=q?`${total} match${total!==1?'es':''} across all sectors`:'';
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════
+
+function updateClock(){
+  const now=new Date();
+  const t=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const d=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('live-time').textContent=`${d}  ${t}`;
+  document.getElementById('foot-time').textContent=`Last refresh: ${t}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ═══════════════════════════════════════════════════════
+//  LIVE UPDATES
+// ═══════════════════════════════════════════════════════
+
+function liveUpdate(){
+  SECURITIES.forEach(s=>{
+    const d=allData[s.sym];if(!d)return;
+    const r=(Math.random()-.489)*.0025;
+    const newLast=+(d.last*(1+r)).toFixed(4);
+    d.chg=newLast-d.last;
+    d.pct=d.chg/d.last*100;
+    d.last=newLast;
+    d.prices.push(newLast);d.prices.shift();
+    d.dir=d.pct>=0.05?'up':d.pct<=-0.05?'dn':'flat';
+    d.color=d.dir==='up'?'#3ecf8e':d.dir==='dn'?'#f16c6c':'#7b8db0';
+
+    document.querySelectorAll(`[data-sym="${s.sym}"]`).forEach(card=>{
+      const id='spark-'+s.sym.replace(/[^a-zA-Z0-9]/g,'_');
+      const priceEl=document.getElementById('price-'+id);
+      const badgeEl=card.querySelector('.card-badge');
+      if(priceEl)priceEl.textContent=fmt(newLast);
+      if(badgeEl){badgeEl.textContent=(d.pct>=0?'+':'')+d.pct.toFixed(2)+'%';badgeEl.className='card-badge badge-'+d.dir;}
+      drawSparkline(id,d.prices.slice(-30),d.color);
+    });
+  });
+  buildTicker();
+  buildStats();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+
+const statuses=['Connecting to exchanges…','Fetching price history…','Computing momentum indicators…','Running RSI & MA models…','Generating AI forecasts…','Rendering dashboard…'];
+let si=0;
+const statusEl=document.getElementById('load-status');
+const siv=setInterval(()=>{si++;if(si<statuses.length)statusEl.textContent=statuses[si];else clearInterval(siv);},500);
+
+setTimeout(()=>{
+  // Build all grids
+  ['indices','bigtech','banks','auto','construction','energy','health','consumer','athex','all'].forEach(t=>buildGrid(t));
+
+  // Analysis
+  buildPredTable();
+  buildHeatmap();
+  buildSentiment();
+  buildStats();
+  buildTicker();
+
+  // Default chart
+  const sp=allPrices['^GSPC'];
+  if(sp)drawMainChart(sp,'S&P 500');
+
+  // Hide loader
+  const loader=document.getElementById('loader');
+  loader.style.opacity='0';
+  setTimeout(()=>loader.style.display='none',700);
+
+  // Clock
+  updateClock();
+  setInterval(updateClock,1000);
+
+  // Live updates
+  setInterval(liveUpdate,10000);
+
+},3200);
+</script>
+</body>
+</html>
